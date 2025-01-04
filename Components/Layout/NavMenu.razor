@@ -1,0 +1,77 @@
+﻿<div class="top-row ps-3 navbar navbar-dark custom-navbar">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">ExpenseTracker</a>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Dashboard
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/transactionPage">
+                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Transaction
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/debts">
+                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Debts
+            </NavLink>
+        </div>
+    </nav>
+</div>
+
+<style>
+    /* Custom Navbar Styling */
+    .custom-navbar {
+        background-color:red; /* Black background for navbar */
+    }
+
+    .navbar-toggler {
+        background-color: red; /* Darker color for the navbar toggler */
+    }
+
+    /* Navigation Link Styling */
+    .nav-item .nav-link {
+        color: #e0e0e0 !important; /* Light gray text color */
+        font-size: 16px;
+        padding: 10px 15px;
+        transition: all 0.3s ease; /* Smooth transition on hover */
+        display: flex;
+        align-items: center;
+    }
+
+        /* Hover Effect */
+        .nav-item .nav-link:hover {
+            color: yellow !important; /* Change color to yellow when hovered */
+            background-color: #555; /* Darker gray background on hover */
+            border-radius: 5px; /* Rounded corners on hover */
+        }
+
+        /* Active Link Styling */
+        .nav-item .nav-link.active {
+            color: #fff !important; /* White text color for active link */
+            background-color: black !important; /* Blue background for active link */
+            border-radius: 5px;
+        }
+
+    /* Navbar Scrollable Styling */
+    .nav-scrollable {
+        height: 100vh;
+        overflow-y: auto;
+    }
+
+    .nav-item {
+        margin: 5px 0;
+    }
+
+    /* Custom Icon Style */
+    .bi {
+        margin-right: 10px;
+    }
+</style>

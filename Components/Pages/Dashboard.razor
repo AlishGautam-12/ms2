@@ -1,0 +1,209 @@
+@page "/"
+@using ms2.Models
+@inject UserService UserService
+
+<h1>Dashboard</h1>
+
+<div class="dashboard-container">
+    <div class="row">
+        <!-- Statistics Overview -->
+        <div class="col-md-4 card">
+            <h2>Statistics Overview</h2>
+            <ul class="list-group">
+                <li class="list-group-item">
+                    Total Inflows: <span class="stat-value">@Data.Transactions.Where(t => t.Credit > 0).Sum(t => t.Credit).ToString("C")</span>
+                </li>
+                <li class="list-group-item">
+                    Total Outflows: <span class="stat-value">@Data.Transactions.Where(t => t.Debit > 0).Sum(t => t.Debit).ToString("C")</span>
+                </li>
+                <li class="list-group-item">
+                    Total Debts: <span class="stat-value">@Data.Debts.Sum(d => d.Amount).ToString("C")</span>
+                </li>
+                <li class="list-group-item">
+                    Cleared Debts: <span class="stat-value">@Data.Debts.Sum(d => d.PaidAmount).ToString("C")</span>
+                </li>
+                <li class="list-group-item">
+                    Remaining Debts: <span class="stat-value">@Data.Debts.Sum(d => d.Amount - d.PaidAmount).ToString("C")</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Highest/Lowest Transactions -->
+        <div class="col-md-12 card">
+            <h2>Highest and Lowest Transactions</h2>
+
+            <!-- Debit Section -->
+            <div class="transaction-section">
+                <div class="section">
+                    <h3>Debit</h3>
+                    <div class="toggle-buttons">
+                        <button class="btn btn-primary" @onclick="ShowHighestDebits">Show Highest Debits</button>
+                        <button class="btn btn-secondary" @onclick="ShowLowestDebits">Show Lowest Debits</button>
+                    </div>
+                    <div class="transaction-list" style="display:@(showHighestDebits ? "block" : "none")">
+                        <h4>Highest Debits</h4>
+                        <ul>
+                            @foreach (var debit in Data.Transactions.Where(t => t.Debit > 0).OrderByDescending(t => t.Debit).Take(5))
+                            {
+                                <li>@debit.Date.ToString("MM/dd/yyyy") - @debit.Debit.ToString("C") - @debit.Description</li>
+                            }
+                        </ul>
+                    </div>
+                    <div class="transaction-list" style="display:@(showLowestDebits ? "block" : "none")">
+                        <h4>Lowest Debits</h4>
+                        <ul>
+                            @foreach (var debit in Data.Transactions.Where(t => t.Debit > 0).OrderBy(t => t.Debit).Take(5))
+                            {
+                                <li>@debit.Date.ToString("MM/dd/yyyy") - @debit.Debit.ToString("C") - @debit.Description</li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Credit Section -->
+                <div class="section">
+                    <h3>Credit</h3>
+                    <div class="toggle-buttons">
+                        <button class="btn btn-primary" @onclick="ShowHighestCredits">Show Highest Credits</button>
+                        <button class="btn btn-secondary" @onclick="ShowLowestCredits">Show Lowest Credits</button>
+                    </div>
+                    <div class="transaction-list" style="display:@(showHighestCredits ? "block" : "none")">
+                        <h4>Highest Credits</h4>
+                        <ul>
+                            @foreach (var credit in Data.Transactions.Where(t => t.Credit > 0).OrderByDescending(t => t.Credit).Take(5))
+                            {
+                                <li>@credit.Date.ToString("MM/dd/yyyy") - @credit.Credit.ToString("C") - @credit.Description</li>
+                            }
+                        </ul>
+                    </div>
+                    <div class="transaction-list" style="display:@(showLowestCredits ? "block" : "none")">
+                        <h4>Lowest Credits</h4>
+                        <ul>
+                            @foreach (var credit in Data.Transactions.Where(t => t.Credit > 0).OrderBy(t => t.Credit).Take(5))
+                            {
+                                <li>@credit.Date.ToString("MM/dd/yyyy") - @credit.Credit.ToString("C") - @credit.Description</li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Debt Section -->
+                <div class="section">
+                    <h3>Debts</h3>
+                    <div class="toggle-buttons">
+                        <button class="btn btn-primary" @onclick="ShowHighestDebts">Show Highest Debts</button>
+                        <button class="btn btn-secondary" @onclick="ShowLowestDebts">Show Lowest Debts</button>
+                    </div>
+                    <div class="transaction-list" style="display:@(showHighestDebts ? "block" : "none")">
+                        <h4>Highest Debts</h4>
+                        <ul>
+                            @foreach (var debt in Data.Debts.OrderByDescending(d => d.Amount).Take(5))
+                            {
+                                <li>@debt.Date.ToString("MM/dd/yyyy") - @debt.Amount.ToString("C") - @debt.Description</li>
+                            }
+                        </ul>
+                    </div>
+                    <div class="transaction-list" style="display:@(showLowestDebts ? "block" : "none")">
+                        <h4>Lowest Debts</h4>
+                        <ul>
+                            @foreach (var debt in Data.Debts.OrderBy(d => d.Amount).Take(5))
+                            {
+                                <li>@debt.Date.ToString("MM/dd/yyyy") - @debt.Amount.ToString("C") - @debt.Description</li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Debts -->
+        <div class="col-md-4 card">
+            <h2>Pending Debts</h2>
+            <ul class="list-group">
+                @if (Data.Debts.Any())
+                {
+                    @foreach (var debt in Data.Debts.Where(d => d.Amount > d.PaidAmount))
+                    {
+                        <li class="list-group-item" style="color: red;">@debt.Description - Remaining: @((debt.Amount - debt.PaidAmount).ToString("C"))</li>
+
+                    }
+                }
+                else
+                {
+                    <li class="list-group-item">No pending debts.</li>
+                }
+            </ul>
+        </div>
+    </div>
+</div>
+
+@code {
+    private AppData Data;
+    private bool showHighestDebits = true;
+    private bool showLowestDebits = false;
+    private bool showHighestCredits = true;
+    private bool showLowestCredits = false;
+    private bool showHighestDebts = true;
+    private bool showLowestDebts = false;
+
+    protected override void OnInitialized()
+    {
+        Data = UserService.LoadData();
+    }
+
+    private void ShowHighestDebits() { showHighestDebits = true; showLowestDebits = false; }
+    private void ShowLowestDebits() { showHighestDebits = false; showLowestDebits = true; }
+    private void ShowHighestCredits() { showHighestCredits = true; showLowestCredits = false; }
+    private void ShowLowestCredits() { showHighestCredits = false; showLowestCredits = true; }
+    private void ShowHighestDebts() { showHighestDebts = true; showLowestDebts = false; }
+    private void ShowLowestDebts() { showHighestDebts = false; showLowestDebts = true; }
+}
+
+<style>
+    .dashboard-container {
+        padding: 20px;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .card {
+        background: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+    }
+
+    .toggle-buttons button {
+        margin-right: 10px;
+    }
+
+    .transaction-list {
+        margin-top: 10px;
+    }
+
+    .transaction-section {
+        display: flex;
+        justify-content: space-between;
+        gap: 15px;
+    }
+
+    .section {
+        flex: 1;
+        min-width: 30%;
+    }
+
+        .section h3 {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+
+    .btn {
+        padding: 8px 15px;
+        font-size: 14px;
+    }
+
+    .stat-value {
+        font-weight: bold;
+        color: #4CAF50;
+    }
+</style>

@@ -1,0 +1,108 @@
+@page "/debts"
+@using ms2.Models
+@inject UserService UserService
+@inject IJSRuntime JSRuntime
+
+<h1>User Debts</h1>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Debt ID</th>
+            <th>Total Debt</th>
+            <th>Paid Amount</th>
+            <th>Remaining Debt</th>
+            <th>Status</th>
+            <th>Date</th>
+            <th>Notes</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var debt in Data.Debts)
+        {
+            <tr>
+                <td>@debt.Id</td>
+                <td>@debt.Amount.ToString("C")</td>
+                <td>@debt.PaidAmount.ToString("C")</td>
+                <td>@((debt.Amount - debt.PaidAmount).ToString("C"))</td>
+
+                <td>
+                    @if (debt.Amount - debt.PaidAmount == 0)
+                    {
+                        <span class="text-success">Debt Cleared</span>
+                    }
+                    else
+                    {
+                        <span class="text-warning">Pending</span>
+                    }
+                </td>
+                <td>@debt.Date.ToString("MM/dd/yyyy")</td>
+                <td>@debt.Description</td>
+                <td>
+                    <button class="btn btn-danger btn-sm" @onclick="() => DeleteDebt(debt.Id)">Delete</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (!HasUnpaidDebt)
+{
+    <h2>Add New Debt</h2>
+    <EditForm Model="newDebt" OnValidSubmit="HandleDebtSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="form-group">
+            <label for="amount">Debt Amount</label>
+            <InputNumber id="amount" @bind-Value="newDebt.Amount" class="form-control" />
+        </div>
+
+        <div class="form-group">
+            <label for="description">Notes</label>
+            <InputText id="description" @bind-Value="newDebt.Description" class="form-control" />
+        </div>
+
+        <div class="form-group">
+            <button type="submit" class="btn btn-primary">Add Debt</button>
+        </div>
+    </EditForm>
+}
+
+@code {
+    private AppData Data;
+    private Debt newDebt = new Debt();
+    private bool HasUnpaidDebt => Data.Debts.Any(d => d.Amount > d.PaidAmount);
+
+    protected override void OnInitialized()
+    {
+        Data = UserService.LoadData();
+    }
+
+    private void HandleDebtSubmit()
+    {
+        if (HasUnpaidDebt)
+        {
+            JSRuntime.InvokeVoidAsync("alert", "Please pay off existing debts before adding new ones.");
+            return;
+        }
+
+        newDebt.Id = Data.Debts.Count + 1;
+        newDebt.Date = DateTime.Now;
+        Data.Debts.Add(newDebt);
+        UserService.SaveData(Data);
+
+        newDebt = new Debt();
+    }
+
+    private void DeleteDebt(int debtId)
+    {
+        var debtToRemove = Data.Debts.FirstOrDefault(d => d.Id == debtId);
+        if (debtToRemove != null)
+        {
+            Data.Debts.Remove(debtToRemove);
+            UserService.SaveData(Data);
+        }
+    }
+}

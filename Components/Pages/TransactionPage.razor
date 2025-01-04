@@ -1,0 +1,446 @@
+﻿@page "/transactionPage"
+@using ms2.Models
+@inject UserService UserService
+
+<h1>User Transactions</h1>
+
+<style>
+    .filter-section {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .filter-input {
+        width: 200px;
+    }
+
+    .filter-btn {
+        margin-left: 10px;
+    }
+</style>
+
+<!-- Filter Section (Inline with Internal CSS) -->
+<div class="filter-section">
+    <input type="text" @bind="searchDescription" placeholder="Search by notes" class="form-control filter-input" />
+    <select @bind="filterType" class="form-control filter-input">
+        <option value="">All Types</option>
+        <option value="Credit">Credit</option>
+        <option value="Debit">Debit</option>
+    </select>
+    <input type="date" @bind="startDate" class="form-control filter-input" />
+    <input type="date" @bind="endDate" class="form-control filter-input" />
+    <button @onclick="FilterTransactions" class="btn btn-primary filter-btn">Filter</button>
+</div>
+
+<!-- Transactions Table -->
+@if (filteredTransactions.Any())
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Transaction ID</th>
+                <th>Main Balance</th>
+                <th>Type</th>
+                <th>Debit</th>
+                <th>Credit</th>
+                <th>Tags</th>
+                <th>Date</th>
+                <th>Notes</th>
+                <th>Debt Cleared Notes</th> <!-- New Column -->
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var transaction in filteredTransactions)
+            {
+                <tr>
+                    <td>@transaction.Id</td>
+                    <td>@((Data.Transactions.Sum(t => t.Credit) - Data.Transactions.Sum(t => t.Debit)).ToString("C"))</td>
+                    <td>@transaction.Type</td>
+                    <td>@transaction.Debit.ToString("C")</td>
+                    <td>@transaction.Credit.ToString("C")</td>
+                    <td>@string.Join(", ", transaction.Tags ?? new List<string>())</td>
+                    <td>@transaction.Date.ToString("MM/dd/yyyy")</td>
+                    <td>@transaction.Description</td>
+                    <td>@transaction.DebtClearedNotes</td> <!-- Display Debt Cleared Notes -->
+                    <td>
+                        <button class="btn btn-warning" @onclick="() => EditTransaction(transaction)">Edit</button>
+                        <button class="btn btn-danger" @onclick="() => DeleteTransaction(transaction.Id)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+
+    </table>
+}
+else
+{
+    <p>No transactions made in the selected date range.</p>
+}
+
+<h2>@(isEditMode ? "Edit" : "Add New") Transaction</h2>
+<EditForm Model="newTransaction" OnValidSubmit="HandleTransactionSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="form-group">
+        <label for="type">Transaction Type</label>
+        <InputSelect id="type" @bind-Value="newTransaction.Type" class="form-control" @onchange="OnTransactionTypeChange">
+            <option value="">Select Type</option>
+            <option value="Credit">Credit</option>
+            <option value="Debit">Debit</option>
+        </InputSelect>
+    </div>
+
+    @if (newTransaction.Type == "Credit" || newTransaction.Type == "Debit")
+    {
+        <div class="form-group">
+            <label for="amount">Amount (@(newTransaction.Type))</label>
+            <InputNumber id="amount" @bind-Value="newTransaction.Amount" class="form-control" />
+            @if (newTransaction.Amount <= 0)
+            {
+                <span class="text-danger">Amount must be greater than zero.</span>
+            }
+            @if (newTransaction.Type == "Debit" && !IsSufficientBalance(newTransaction.Amount))
+            {
+                <span class="text-danger">Insufficient balance for this outflow.</span>
+            }
+        </div>
+
+        <div class="form-group">
+            <label for="tags">Tags (Select One or More)</label>
+            <select multiple class="form-control" @onchange="OnTagsChange">
+                @foreach (var tag in defaultTags)
+                {
+                    <option value="@tag" selected="@(selectedTags.Contains(tag))">@tag</option>
+                }
+            </select>
+        </div>
+
+        <!-- Manual Description -->
+        <div class="form-group">
+            <label for="notes">Description</label>
+            <InputText id="notes" @bind-Value="newTransaction.Description" class="form-control" placeholder="Enter a description for the transaction" />
+        </div>
+
+        @if (newTransaction.Type == "Credit")
+        {
+            <!-- Debt Cleared Notes for Credit Transactions -->
+            <div class="form-group">
+                <label for="debtClearedNotes">Debt Cleared Notes</label>
+                <InputText id="debtClearedNotes" @bind-Value="newTransaction.DebtClearedNotes" class="form-control" placeholder="Enter notes for debt clearance (if any)" />
+            </div>
+        }
+    }
+
+    <div class="form-group">
+        <button type="submit" class="btn btn-primary" disabled="@(!CanSubmitTransaction())">@(isEditMode ? "Update" : "Add") Transaction</button>
+    </div>
+</EditForm>
+
+
+@code {
+    private AppData Data;
+    private Transaction newTransaction = new Transaction();
+    private List<string> defaultTags = new List<string>
+    {
+        "Bonus", "Salary", "Trading", "Gift", "Interest", "Rental Income", "Food", "Drinks", "Clothes", "Gadgets", "Miscellaneous", "Fuel", "Rent", "EMI", "Party"
+    };
+
+    private List<string> selectedTags = new List<string>();
+    private bool isEditMode = false;
+    private string searchDescription = "";
+    private string filterType = "";
+    private DateTime? startDate;
+    private DateTime? endDate;
+    private IEnumerable<Transaction> filteredTransactions;
+
+    protected override void OnInitialized()
+    {
+        Data = UserService.LoadData();
+        newTransaction.Date = DateTime.Now;
+        filteredTransactions = Data.Transactions;
+    }
+
+    private void FilterTransactions()
+    {
+        filteredTransactions = Data.Transactions
+            .Where(t =>
+                (string.IsNullOrWhiteSpace(searchDescription) ||
+                 t.Description != null && t.Description.Contains(searchDescription, StringComparison.OrdinalIgnoreCase))
+            )
+            .Where(t => string.IsNullOrWhiteSpace(filterType) || t.Type == filterType)
+            .Where(t =>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                (!startDate.HasValue || t.Date.Date >= startDate.Value.Date) &&
+                (!endDate.HasValue || t.Date.Date <= endDate.Value.Date))
+            .ToList();
+
+        // If no transactions match, we can show a message or leave the list empty
+        if (!filteredTransactions.Any())
+        {
+            filteredTransactions = new List<Transaction>();
+        }
+    }
+
+    private void RefreshFilteredTransactions()
+    {
+        // Apply the same filtering logic used in the FilterTransactions method
+        filteredTransactions = Data.Transactions
+            .Where(t => string.IsNullOrWhiteSpace(searchDescription) || t.Description.Contains(searchDescription, StringComparison.OrdinalIgnoreCase))
+            .Where(t => string.IsNullOrWhiteSpace(filterType) || t.Type == filterType)
+            .Where(t =>
+                (!startDate.HasValue || t.Date.Date >= startDate.Value.Date) &&
+                (!endDate.HasValue || t.Date.Date <= endDate.Value.Date))
+            .ToList();
+    }
+
+
+    private void HandleTransactionSubmit()
+    {
+        if (newTransaction.Amount <= 0)
+        {
+            return;
+        }
+
+        newTransaction.Tags = new List<string>(selectedTags);
+        newTransaction.Date = DateTime.Now;
+
+        if (isEditMode)
+        {
+            // Editing logic
+            var transaction = Data.Transactions.FirstOrDefault(t => t.Id == newTransaction.Id);
+            if (transaction != null)
+            {
+                transaction.Type = newTransaction.Type;
+                transaction.Amount = newTransaction.Amount;
+                transaction.Tags = new List<string>(selectedTags);
+                transaction.Description = newTransaction.Description; // Manual description
+                transaction.DebtClearedNotes = newTransaction.DebtClearedNotes; // Separate debt-cleared notes
+
+                if (newTransaction.Type == "Credit")
+                {
+                    transaction.Credit = newTransaction.Amount;
+                    transaction.Debit = 0;
+                }
+                else if (newTransaction.Type == "Debit")
+                {
+                    transaction.Debit = newTransaction.Amount;
+                    transaction.Credit = 0;
+                }
+            }
+        }
+        else
+        {
+            newTransaction.Id = Data.Transactions.Count > 0 ? Data.Transactions.Max(t => t.Id) + 1 : 1;
+
+            if (newTransaction.Type == "Credit")
+            {
+                var (remainingCredit, debtCleared) = AllocateCreditToDebts(newTransaction.Amount);
+
+                newTransaction.Credit = remainingCredit;
+                newTransaction.Description = newTransaction.Description ?? "Credit transaction processed."; // Default description if empty
+                if (debtCleared > 0)
+                {
+                    newTransaction.DebtClearedNotes = $"Debt of {debtCleared:C} cleared from credit."; // Debt Cleared Notes
+                }
+            }
+            else if (newTransaction.Type == "Debit")
+            {
+                newTransaction.Debit = newTransaction.Amount;
+                newTransaction.Credit = 0;
+            }
+
+            Data.Transactions.Add(newTransaction);
+        }
+
+        UserService.SaveData(Data);
+        RefreshFilteredTransactions();
+
+        newTransaction = new Transaction { Date = DateTime.Now };
+        selectedTags.Clear();
+        isEditMode = false;
+    }
+
+    private void AddTransactionToMainBalance(decimal netCredit)
+    {
+        // Add the remaining credit amount (net credit) to the main balance
+        var balanceTransaction = new Transaction
+            {
+                Id = Data.Transactions.Count > 0 ? Data.Transactions.Max(t => t.Id) + 1 : 1,
+                Type = "Credit",
+                Credit = netCredit,
+                Debit = 0,
+                Tags = new List<string> { "Remaining Credit" },
+                Date = DateTime.Now,
+                Description = "Net credit after debt clearance."
+            };
+        Data.Transactions.Add(balanceTransaction);
+    }
+
+
+
+
+    private void OnTransactionTypeChange(ChangeEventArgs e)
+    {
+        newTransaction.Type = e.Value.ToString();
+    }
+
+    private void OnTagsChange(ChangeEventArgs e)
+    {
+        if (e.Value is IEnumerable<string> selected)
+        {
+            selectedTags = selected.ToList();
+        }
+        else if (e.Value is string singleValue)
+        {
+            selectedTags = singleValue.Split(',').Select(s => s.Trim()).ToList();
+        }
+        newTransaction.Tags = new List<string>(selectedTags);
+    }
+
+    private bool IsSufficientBalance(decimal outflow)
+    {
+        var currentBalance = Data.Transactions.Sum(t => t.Credit) - Data.Transactions.Sum(t => t.Debit);
+        return outflow <= currentBalance;
+    }
+
+    private bool CanSubmitTransaction()
+    {
+        if (newTransaction.Amount <= 0)
+        {
+            return false;
+        }
+
+        if (newTransaction.Type == "Debit")
+        {
+            return IsSufficientBalance(newTransaction.Amount);
+        }
+        return true;
+    }
+
+    private void EditTransaction(Transaction transaction)
+    {
+        newTransaction = new Transaction
+        {
+            Id = transaction.Id,
+            Type = transaction.Type,
+            Amount = transaction.Type == "Credit" ? transaction.Credit : transaction.Debit,
+            Tags = new List<string>(transaction.Tags ?? new List<string>()),
+            Date = transaction.Date,
+            Description = transaction.Description
+        };
+        selectedTags = new List<string>(transaction.Tags ?? new List<string>());
+        isEditMode = true;
+    }
+
+    private void DeleteTransaction(int id)
+    {
+        var transaction = Data.Transactions.FirstOrDefault(t => t.Id == id);
+        if (transaction != null)
+        {
+            Data.Transactions.Remove(transaction);
+            UserService.SaveData(Data);
+        }
+    }
+
+    private (decimal remainingCredit, decimal debtCleared) AllocateCreditToDebts(decimal creditAmount)
+    {
+        decimal originalCredit = creditAmount;
+        decimal debtCleared = 0;
+
+        foreach (var debt in Data.Debts.Where(d => d.Amount > d.PaidAmount))
+        {
+            var remainingDebt = debt.Amount - debt.PaidAmount;
+
+            if (creditAmount <= remainingDebt)
+            {
+                // Pay part of the debt
+                debt.PaidAmount += creditAmount;
+                debtCleared += creditAmount;
+                creditAmount = 0;
+                break;
+            }
+            else
+            {
+                // Fully pay off this debt
+                debt.PaidAmount += remainingDebt;
+                debtCleared += remainingDebt;
+                creditAmount -= remainingDebt;
+            }
+        }
+
+        UserService.SaveData(Data);
+
+        return (creditAmount, debtCleared);
+    }
+}
