@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using ms2.Service;
 
 namespace ms2
 {
@@ -15,6 +16,7 @@ namespace ms2
                 });
 
             builder.Services.AddSingleton<UserService>();
+            builder.Services.AddSingleton<CurrencyExchangeService>();
 
             builder.Services.AddMauiBlazorWebView();
 

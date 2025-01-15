@@ -57,7 +57,7 @@
             {
                 <tr>
                     <td>@transaction.Id</td>
-                    <td>@((Data.Transactions.Sum(t => t.Credit) - Data.Transactions.Sum(t => t.Debit)).ToString("C"))</td>
+                    <td>@GetMainBalance()</td>
                     <td>@transaction.Type</td>
                     <td>@transaction.Debit.ToString("C")</td>
                     <td>@transaction.Credit.ToString("C")</td>
@@ -121,8 +121,8 @@ else
 
         <!-- Manual Description -->
         <div class="form-group">
-            <label for="notes">Description</label>
-            <InputText id="notes" @bind-Value="newTransaction.Description" class="form-control" placeholder="Enter a description for the transaction" />
+            <label for="notes">Notes</label>
+            <InputText id="notes" @bind-Value="newTransaction.Description" class="form-control" placeholder="Enter a description for the notes" />
         </div>
 
         @if (newTransaction.Type == "Credit")
@@ -172,76 +172,7 @@ else
                  t.Description != null && t.Description.Contains(searchDescription, StringComparison.OrdinalIgnoreCase))
             )
             .Where(t => string.IsNullOrWhiteSpace(filterType) || t.Type == filterType)
-            .Where(t =>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                (!startDate.HasValue || t.Date.Date >= startDate.Value.Date) &&
+            .Where(t => (!startDate.HasValue || t.Date.Date >= startDate.Value.Date) &&
                 (!endDate.HasValue || t.Date.Date <= endDate.Value.Date))
             .ToList();
 
@@ -264,68 +195,66 @@ else
             .ToList();
     }
 
+    private decimal GetMainBalance()
+    {
+        var totalCredit = Data.Transactions.Sum(t => t.Credit);
+        var totalDebit = Data.Transactions.Sum(t => t.Debit);
+        var totalDebtAddedToBalance = Data.Debts.Sum(d => d.Amount);
+        var totalDebtCleared = Data.Debts.Sum(d => d.PaidAmount);
+
+        // Main balance includes debt added but deducts cleared debt
+        return totalCredit - totalDebit + totalDebtAddedToBalance - totalDebtCleared;
+    }
+
 
     private void HandleTransactionSubmit()
     {
         if (newTransaction.Amount <= 0)
         {
-            return;
+            return; // Ignore invalid amounts
         }
 
         newTransaction.Tags = new List<string>(selectedTags);
         newTransaction.Date = DateTime.Now;
 
+        if (newTransaction.Type == "Credit")
+        {
+            // Allocate credit to debts first
+            var (remainingCredit, debtCleared) = AllocateCreditToDebts(newTransaction.Amount);
+
+            newTransaction.Credit = remainingCredit;
+            newTransaction.Description = newTransaction.Description ?? "Credit transaction processed.";
+            if (debtCleared > 0)
+            {
+                newTransaction.DebtClearedNotes = $"Debt of {debtCleared:C} cleared from credit.";
+            }
+        }
+        else if (newTransaction.Type == "Debit")
+        {
+            if (!IsSufficientBalance(newTransaction.Amount))
+            {
+                return; // Abort if insufficient balance
+            }
+            newTransaction.Debit = newTransaction.Amount;
+            newTransaction.Credit = 0;
+        }
+
         if (isEditMode)
         {
-            // Editing logic
-            var transaction = Data.Transactions.FirstOrDefault(t => t.Id == newTransaction.Id);
-            if (transaction != null)
-            {
-                transaction.Type = newTransaction.Type;
-                transaction.Amount = newTransaction.Amount;
-                transaction.Tags = new List<string>(selectedTags);
-                transaction.Description = newTransaction.Description; // Manual description
-                transaction.DebtClearedNotes = newTransaction.DebtClearedNotes; // Separate debt-cleared notes
-
-                if (newTransaction.Type == "Credit")
-                {
-                    transaction.Credit = newTransaction.Amount;
-                    transaction.Debit = 0;
-                }
-                else if (newTransaction.Type == "Debit")
-                {
-                    transaction.Debit = newTransaction.Amount;
-                    transaction.Credit = 0;
-                }
-            }
+            // Edit existing transaction logic here
         }
         else
         {
             newTransaction.Id = Data.Transactions.Count > 0 ? Data.Transactions.Max(t => t.Id) + 1 : 1;
-
-            if (newTransaction.Type == "Credit")
-            {
-                var (remainingCredit, debtCleared) = AllocateCreditToDebts(newTransaction.Amount);
-
-                newTransaction.Credit = remainingCredit;
-                newTransaction.Description = newTransaction.Description ?? "Credit transaction processed."; // Default description if empty
-                if (debtCleared > 0)
-                {
-                    newTransaction.DebtClearedNotes = $"Debt of {debtCleared:C} cleared from credit."; // Debt Cleared Notes
-                }
-            }
-            else if (newTransaction.Type == "Debit")
-            {
-                newTransaction.Debit = newTransaction.Amount;
-                newTransaction.Credit = 0;
-            }
-
             Data.Transactions.Add(newTransaction);
         }
 
         UserService.SaveData(Data);
+        UserService.UpdateMainBalance();  // Recalculate and update the main balance
+
         RefreshFilteredTransactions();
 
+        // Reset for the next transaction
         newTransaction = new Transaction { Date = DateTime.Now };
         selectedTags.Clear();
         isEditMode = false;
@@ -346,9 +275,6 @@ else
             };
         Data.Transactions.Add(balanceTransaction);
     }
-
-
-
 
     private void OnTransactionTypeChange(ChangeEventArgs e)
     {
@@ -391,14 +317,14 @@ else
     private void EditTransaction(Transaction transaction)
     {
         newTransaction = new Transaction
-        {
-            Id = transaction.Id,
-            Type = transaction.Type,
-            Amount = transaction.Type == "Credit" ? transaction.Credit : transaction.Debit,
-            Tags = new List<string>(transaction.Tags ?? new List<string>()),
-            Date = transaction.Date,
-            Description = transaction.Description
-        };
+            {
+                Id = transaction.Id,
+                Type = transaction.Type,
+                Amount = transaction.Type == "Credit" ? transaction.Credit : transaction.Debit,
+                Tags = new List<string>(transaction.Tags ?? new List<string>()),
+                Date = transaction.Date,
+                Description = transaction.Description
+            };
         selectedTags = new List<string>(transaction.Tags ?? new List<string>());
         isEditMode = true;
     }
@@ -409,6 +335,7 @@ else
         if (transaction != null)
         {
             Data.Transactions.Remove(transaction);
+            UserService.UpdateMainBalance();  // Recalculate and update the main balance
             UserService.SaveData(Data);
         }
     }
@@ -420,26 +347,22 @@ else
 
         foreach (var debt in Data.Debts.Where(d => d.Amount > d.PaidAmount))
         {
-            var remainingDebt = debt.Amount - debt.PaidAmount;
+            decimal unpaidDebtAmount = debt.Amount - debt.PaidAmount;
 
-            if (creditAmount <= remainingDebt)
+            if (creditAmount >= unpaidDebtAmount)
             {
-                // Pay part of the debt
-                debt.PaidAmount += creditAmount;
-                debtCleared += creditAmount;
-                creditAmount = 0;
-                break;
+                debt.PaidAmount += unpaidDebtAmount;
+                creditAmount -= unpaidDebtAmount;
+                debtCleared += unpaidDebtAmount;
             }
             else
             {
-                // Fully pay off this debt
-                debt.PaidAmount += remainingDebt;
-                debtCleared += remainingDebt;
-                creditAmount -= remainingDebt;
+                debt.PaidAmount += creditAmount;
+                creditAmount = 0;
+                debtCleared += creditAmount;
+                break;
             }
         }
-
-        UserService.SaveData(Data);
 
         return (creditAmount, debtCleared);
     }

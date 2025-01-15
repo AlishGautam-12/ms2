@@ -1,11 +1,31 @@
 @page "/"
 @using ms2.Models
+@using ms2.Service
 @inject UserService UserService
+@inject CurrencyExchangeService ExchangeService
 
 <h1>Dashboard</h1>
 
+<h3>Currency Exchange</h3>
+
+<div class="form-group">
+    <label for="currency">Select Currency:</label>
+    <InputSelect id="currency" @bind-Value="selectedCurrency" @onchange="UpdateMainBalance">
+        <option value="USD">USD</option>
+        <option value="NPR">NPR</option>
+    </InputSelect>
+
+</div>
+
 <div class="dashboard-container">
     <div class="row">
+        <!-- Main Balance Section -->
+        <div class="col-md-4 card">
+            <h2>Main Balance</h2>
+            <p>@mainBalanceDisplay</p>
+
+        </div>
+
         <!-- Statistics Overview -->
         <div class="col-md-4 card">
             <h2>Statistics Overview</h2>
@@ -45,7 +65,7 @@
                         <ul>
                             @foreach (var debit in Data.Transactions.Where(t => t.Debit > 0).OrderByDescending(t => t.Debit).Take(5))
                             {
-                                <li>@debit.Date.ToString("MM/dd/yyyy") - @debit.Debit.ToString("C") - @debit.Description</li>
+                                    <li>@debit.Date.ToString("MM/dd/yyyy") - @debit.Debit.ToString("C") - @debit.Description</li>
                             }
                         </ul>
                     </div>
@@ -54,7 +74,7 @@
                         <ul>
                             @foreach (var debit in Data.Transactions.Where(t => t.Debit > 0).OrderBy(t => t.Debit).Take(5))
                             {
-                                <li>@debit.Date.ToString("MM/dd/yyyy") - @debit.Debit.ToString("C") - @debit.Description</li>
+                                    <li>@debit.Date.ToString("MM/dd/yyyy") - @debit.Debit.ToString("C") - @debit.Description</li>
                             }
                         </ul>
                     </div>
@@ -72,7 +92,7 @@
                         <ul>
                             @foreach (var credit in Data.Transactions.Where(t => t.Credit > 0).OrderByDescending(t => t.Credit).Take(5))
                             {
-                                <li>@credit.Date.ToString("MM/dd/yyyy") - @credit.Credit.ToString("C") - @credit.Description</li>
+                                    <li>@credit.Date.ToString("MM/dd/yyyy") - @credit.Credit.ToString("C") - @credit.Description</li>
                             }
                         </ul>
                     </div>
@@ -81,7 +101,7 @@
                         <ul>
                             @foreach (var credit in Data.Transactions.Where(t => t.Credit > 0).OrderBy(t => t.Credit).Take(5))
                             {
-                                <li>@credit.Date.ToString("MM/dd/yyyy") - @credit.Credit.ToString("C") - @credit.Description</li>
+                                    <li>@credit.Date.ToString("MM/dd/yyyy") - @credit.Credit.ToString("C") - @credit.Description</li>
                             }
                         </ul>
                     </div>
@@ -91,24 +111,24 @@
                 <div class="section">
                     <h3>Debts</h3>
                     <div class="toggle-buttons">
-                        <button class="btn btn-primary" @onclick="ShowHighestDebts">Show Highest Debts</button>
-                        <button class="btn btn-secondary" @onclick="ShowLowestDebts">Show Lowest Debts</button>
+                        <button class="btn btn-primary" @onclick="ShowHighestDebtsSection">Show Highest Debts</button>
+                        <button class="btn btn-secondary" @onclick="ShowLowestDebtsSection">Show Lowest Debts</button>
                     </div>
-                    <div class="transaction-list" style="display:@(showHighestDebts ? "block" : "none")">
+                    <div class="transaction-list" style="display:@(showHighestDebtsSection ? "block" : "none")">
                         <h4>Highest Debts</h4>
                         <ul>
                             @foreach (var debt in Data.Debts.OrderByDescending(d => d.Amount).Take(5))
                             {
-                                <li>@debt.Date.ToString("MM/dd/yyyy") - @debt.Amount.ToString("C") - @debt.Description</li>
+                                    <li>@debt.Date.ToString("MM/dd/yyyy") - @debt.Amount.ToString("C") - @debt.Description</li>
                             }
                         </ul>
                     </div>
-                    <div class="transaction-list" style="display:@(showLowestDebts ? "block" : "none")">
+                    <div class="transaction-list" style="display:@(showLowestDebtsSection ? "block" : "none")">
                         <h4>Lowest Debts</h4>
                         <ul>
                             @foreach (var debt in Data.Debts.OrderBy(d => d.Amount).Take(5))
                             {
-                                <li>@debt.Date.ToString("MM/dd/yyyy") - @debt.Amount.ToString("C") - @debt.Description</li>
+                                    <li>@debt.Date.ToString("MM/dd/yyyy") - @debt.Amount.ToString("C") - @debt.Description</li>
                             }
                         </ul>
                     </div>
@@ -124,13 +144,13 @@
                 {
                     @foreach (var debt in Data.Debts.Where(d => d.Amount > d.PaidAmount))
                     {
-                        <li class="list-group-item" style="color: red;">@debt.Description - Remaining: @((debt.Amount - debt.PaidAmount).ToString("C"))</li>
+                                <li class="list-group-item" style="color: red;">@debt.Description - Remaining: @((debt.Amount - debt.PaidAmount).ToString("C"))</li>
 
                     }
                 }
                 else
                 {
-                    <li class="list-group-item">No pending debts.</li>
+                        <li class="list-group-item">No pending debts.</li>
                 }
             </ul>
         </div>
@@ -143,24 +163,56 @@
     private bool showLowestDebits = false;
     private bool showHighestCredits = true;
     private bool showLowestCredits = false;
-    private bool showHighestDebts = true;
-    private bool showLowestDebts = false;
+    private bool showHighestDebtsSection = true;
+    private bool showLowestDebtsSection = false;
+    private decimal mainBalance;
+    private string selectedCurrency;
+    private string mainBalanceDisplay;
 
     protected override void OnInitialized()
     {
+        mainBalance = UserService.GetMainBalance();
         Data = UserService.LoadData();
+        selectedCurrency = "USD"; // Set default currency
+        UpdateMainBalanceDisplay();  // Initialize the display
     }
 
+
+    private async Task UpdateMainBalance(ChangeEventArgs e)
+    {
+        selectedCurrency = e.Value?.ToString() ?? "USD";
+        await UpdateMainBalanceDisplay();
+    }
+
+    private async Task UpdateMainBalanceDisplay()
+    {
+        if (selectedCurrency == "USD")
+        {
+            mainBalanceDisplay = mainBalance.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("en-US"));
+        }
+        else if (selectedCurrency == "NPR")
+        {
+            // Convert USD to NPR
+            var convertedAmount = await ExchangeService.ConvertAsync("USD", "NPR", mainBalance);
+            mainBalanceDisplay = $"{convertedAmount} NPR";
+        }
+    }
+
+    // Methods to toggle the display of the Highest/Lowest Debits
     private void ShowHighestDebits() { showHighestDebits = true; showLowestDebits = false; }
     private void ShowLowestDebits() { showHighestDebits = false; showLowestDebits = true; }
+
+    // Methods to toggle the display of the Highest/Lowest Credits
     private void ShowHighestCredits() { showHighestCredits = true; showLowestCredits = false; }
     private void ShowLowestCredits() { showHighestCredits = false; showLowestCredits = true; }
-    private void ShowHighestDebts() { showHighestDebts = true; showLowestDebts = false; }
-    private void ShowLowestDebts() { showHighestDebts = false; showLowestDebts = true; }
+
+    // Methods to toggle the display of the Highest/Lowest Debts Section
+    private void ShowHighestDebtsSection() { showHighestDebtsSection = true; showLowestDebtsSection = false; }
+    private void ShowLowestDebtsSection() { showHighestDebtsSection = false; showLowestDebtsSection = true; }
 }
 
 <style>
-    .dashboard-container {
+ .dashboard-container {
         padding: 20px;
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
@@ -207,3 +259,4 @@
         color: #4CAF50;
     }
 </style>
+

@@ -11,5 +11,6 @@ namespace ms2.Models
         public List<User> Users { get; set; } = new();
         public List<Transaction> Transactions { get; set; } = new List<Transaction>();
         public List<Debt> Debts { get; set; } = new List<Debt>();
+        public decimal MainBalance { get; set; }
     }
 }
