@@ -1,4 +1,4 @@
-@page "/"
+@page "/dashboard"
 @using ms2.Models
 @using ms2.Service
 @inject UserService UserService
@@ -14,7 +14,6 @@
         <option value="USD">USD</option>
         <option value="NPR">NPR</option>
     </InputSelect>
-
 </div>
 
 <div class="dashboard-container">
@@ -169,13 +168,13 @@
     private string selectedCurrency;
     private string mainBalanceDisplay;
 
-    protected override void OnInitialized()
-    {
-        mainBalance = UserService.GetMainBalance();
-        Data = UserService.LoadData();
-        selectedCurrency = "USD"; // Set default currency
-        UpdateMainBalanceDisplay();  // Initialize the display
-    }
+   protected override void OnInitialized()
+{
+    mainBalance = UserService.GetMainBalance();
+    Data = UserService.LoadData();
+    selectedCurrency = "USD"; // Set default currency
+    UpdateMainBalanceDisplay();  // Initialize the display
+}
 
 
     private async Task UpdateMainBalance(ChangeEventArgs e)

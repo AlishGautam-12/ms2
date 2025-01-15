@@ -10,5 +10,6 @@ public class User {
     public string Username { get; set; }
     public string Password { get; set; }
     public string Email { get; set; }
-}
+    public DateTime CreatedOn { get; set; } = DateTime.Now; // Date the user was added
+    }
 }

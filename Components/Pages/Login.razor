@@ -1,0 +1,153 @@
+@page "/login"
+@inject UserService UserService
+@using ms2.Models
+@inject NavigationManager NavigationManager
+
+<div class="login-container">
+    <div class="login-form">
+        <h3 class="form-title">Login</h3>
+
+        <input @bind="LoginUsername" placeholder="Username" class="input-field" />
+        <input @bind="LoginPassword" placeholder="Password" type="password" class="input-field" />
+
+        <button @onclick="LoginUser" class="login-button">Login</button>
+
+        @if (!string.IsNullOrEmpty(Message))
+        {
+            <p class="message">@Message</p>
+        }
+
+        <div class="register-link">
+            <p>Don't have an account? <a href="/register">Sign up</a></p>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string LoginUsername = "";
+    private string LoginPassword = "";
+    private string Message = "";
+
+    private async Task LoginUser()
+    {
+        // Input validation
+        if (string.IsNullOrWhiteSpace(LoginUsername) || string.IsNullOrWhiteSpace(LoginPassword))
+        {
+            Message = "Username and password are required.";
+            return;
+        }
+
+        // Load existing users
+        var users = UserService.LoadUsers();
+
+        // Find the user by username
+        var user = users.FirstOrDefault(u => u.Username == LoginUsername);
+
+        if (user == null)
+        {
+            Message = "Invalid username or password.";
+            return;
+        }
+
+        // Validate the password
+        if (!UserService.ValidatePassword(LoginPassword, user.Password))
+        {
+            Message = "Invalid username or password.";
+            return;
+        }
+
+        // Successful login
+        Message = "Login successful! Redirecting to home...";
+        await Task.Delay(2000);
+        NavigationManager.NavigateTo("/dashboard");
+    }
+}
+
+<style>
+    /* Main container with centering */
+    .login-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background-color: #f4f4f9;
+        padding: 20px;
+    }
+
+    /* Login form container */
+    .login-form {
+        background-color: #fff;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 380px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    /* Title of the form */
+    .form-title {
+        text-align: center;
+        margin-bottom: 20px;
+        color: #333;
+        font-size: 24px;
+        font-weight: bold;
+    }
+
+    /* Input field styling */
+    .input-field {
+        padding: 12px;
+        margin: 12px 0;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 16px;
+        outline: none;
+    }
+
+        /* Focus effect for input fields */
+        .input-field:focus {
+            border-color: #4A90E2;
+            box-shadow: 0 0 5px rgba(74, 144, 226, 0.5);
+        }
+
+    /* Button styling */
+    .login-button {
+        background-color: #4A90E2;
+        color: white;
+        border: none;
+        padding: 14px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: bold;
+    }
+
+        /* Button hover effect */
+        .login-button:hover {
+            background-color: #357ABD;
+        }
+
+    /* Message styling (error message) */
+    .message {
+        text-align: center;
+        color: #d9534f;
+        font-size: 14px;
+    }
+
+    /* Register link styling */
+    .register-link {
+        text-align: center;
+    }
+
+        .register-link a {
+            color: #4A90E2;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+            .register-link a:hover {
+                text-decoration: underline;
+            }
+</style>

@@ -10,7 +10,7 @@
     <nav class="flex-column">
 
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+            <NavLink class="nav-link" href="/dashboard" Match="NavLinkMatch.All">
                 <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Dashboard
             </NavLink>
         </div>
@@ -24,8 +24,28 @@
                 <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Debts
             </NavLink>
         </div>
+        <div class="nav-item px-3">
+            <button class="nav-link logout-button" @onclick="HandleLogout">
+                <span class="bi bi-box-arrow-right-nav-menu" aria-hidden="true"></span> Logout
+            </button>
+        </div>
     </nav>
 </div>
+@code {
+    [Inject]
+    private UserService UserService { get; set; }
+    [Inject]
+    private NavigationManager NavigationManager { get; set; }
+
+    private void HandleLogout()
+    {
+        // Clear user session or authentication state
+        UserService.Logout();
+
+        // Navigate to the login page
+        NavigationManager.NavigateTo("/login", forceLoad: true);
+    }
+}
 
 <style>
     /* Custom Navbar Styling */
@@ -75,4 +95,27 @@
     .bi {
         margin-right: 10px;
     }
+
+    
+    .logout-button {
+        background: none;
+        border: none;
+        color: #e0e0e0;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        padding: 10px 15px;
+        transition: all 0.3s ease;
+        width: 100%;
+        text-align: left;
+    }
+
+    .logout-button:hover {
+        color: yellow;
+        background-color: #555;
+        border-radius: 5px;
+    }
+
+
+
 </style>

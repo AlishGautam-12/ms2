@@ -6,26 +6,22 @@ using System.Threading.Tasks;
 
 namespace ms2.Service
 {
-    public class CurrencyExchangeService
+  public class CurrencyExchangeService
+{
+    public async Task<decimal> ConvertAsync(string fromCurrency, string toCurrency, decimal amount)
     {
-        private readonly Dictionary<(string, string), decimal> exchangeRates = new()
-    {
-        { ("USD", "NPR"), 132.50m }, // Example rate: 1 USD = 132.50 NPR
-        { ("NPR", "USD"), 0.0075m }  // Example rate: 1 NPR = 0.0075 USD
-    };
-
-        public Task<string> ConvertAsync(string from, string to, decimal amount)
+        // Simulate conversion rate for USD to NPR
+        if (fromCurrency == "USD" && toCurrency == "NPR")
         {
-            if (from == to)
-                return Task.FromResult($"No conversion needed. Amount: {amount}");
-
-            if (exchangeRates.TryGetValue((from, to), out var rate))
-            {
-                var converted = amount * rate;
-                return Task.FromResult($"{converted:0.00} {to}");
-            }
-
-            return Task.FromResult("Conversion rate not available.");
+            return await Task.FromResult(amount * 120); // Assume 1 USD = 120 NPR
         }
+        else if (fromCurrency == "NPR" && toCurrency == "USD")
+        {
+            return await Task.FromResult(amount / 120); // Reverse conversion
+        }
+        return amount; // Fallback to the same amount if currencies match
     }
+}
+
+
 }

@@ -1,108 +1,153 @@
-@* @page "/register" *@
-@* @inject UserService UserService *@
-@* @inject NavigationManager NavigationManager *@
+@page "/register"
+@inject UserService UserService
+@using ms2.Models
+@inject NavigationManager NavigationManager
 
-@* <h3>Register</h3> *@
+<div class="register-container">
+    <div class="register-form">
+        <h2 class="form-title">Create Account</h2>
+        <input @bind="RegisterUsername" placeholder="Username" class="input-field" />
+        <input @bind="RegisterPassword" placeholder="Password" type="password" class="input-field" />
+        <input @bind="RegisterEmail" placeholder="Email" class="input-field" />
+        <button @onclick="RegisterUser" class="register-button">Register</button>
 
-@* @if (successMessage != null) *@
-@* { *@
-@*         <div class="alert alert-success">@successMessage</div> *@
-@* } *@
-@* @if (errorMessage != null) *@
-@* { *@
-@*         <div class="alert alert-danger">@errorMessage</div> *@
-@* } *@
+        @if (!string.IsNullOrEmpty(Message))
+        {
+            <p class="message">@Message</p>
+        }
 
-@* <EditForm Model="user" OnValidSubmit="RegisterUser"> *@
-@*     <DataAnnotationsValidator /> *@
-@*     <ValidationSummary /> *@
+        <div class="login-link">
+            <p>Already registered? <a href="/login">Login here</a></p>
+        </div>
+    </div>
+</div>
 
-@*     <div class="mb-3"> *@
-@*         <label for="username" class="form-label">Username</label> *@
-@*         <InputText id="username" class="form-control" @bind-Value="user.Username" /> *@
-@*         <ValidationMessage For="@(() => user.Username)" /> *@
-@*     </div> *@
+<style>
+    /* Main container with centering */
+    .register-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background-color: #f4f4f4;
+        padding: 20px;
+    }
 
-@*     <div class="mb-3"> *@
-@*         <label for="email" class="form-label">Email</label> *@
-@*         <InputText id="email" type="email" class="form-control" @bind-Value="user.Email" /> *@
-@*         <ValidationMessage For="@(() => user.Email)" /> *@
-@*     </div> *@
+    /* Form styling */
+    .register-form {
+        background-color: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 400px;
+    }
 
-@*     <div class="mb-3"> *@
-@*         <label for="password" class="form-label">Password</label> *@
-@*         <InputText id="password" type="password" class="form-control" @bind-Value="user.Password" /> *@
-@*         <ValidationMessage For="@(() => user.Password)" /> *@
-@*     </div> *@
+    /* Title of the form */
+    .form-title {
+        text-align: center;
+        font-size: 24px;
+        color: #333;
+        margin-bottom: 20px;
+    }
 
-@*     <div class="mb-3"> *@
-@*         <label for="currency" class="form-label">Currency Type</label> *@
-@*         <InputSelect id="currency" class="form-select" @bind-Value="user.CurrencyType"> *@
-@*             <option value="">Select Currency</option> *@
-@*             <option value="USD">USD</option> *@
-@*             <option value="NPR">NPR</option> *@
-@*         </InputSelect> *@
-@*         <ValidationMessage For="@(() => user.CurrencyType)" /> *@
-@*     </div> *@
+    /* Input field styling */
+    .input-field {
+        width: 100%;
+        padding: 12px;
+        margin: 10px 0;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 16px;
+        box-sizing: border-box;
+    }
 
-@*     <button type="submit" class="btn btn-primary">Register</button> *@
-@* </EditForm> *@
+    /* Button styling */
+    .register-button {
+        width: 100%;
+        padding: 12px;
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+        box-sizing: border-box;
+    }
 
-@* @code { *@
-@*     private UserRegistrationModel user = new UserRegistrationModel(); *@
-@*     private string? successMessage; *@
-@*     private string? errorMessage; *@
+        .register-button:hover {
+            background-color: #45a049;
+        }
 
-@*     private async Task RegisterUser() *@
-@*     { *@
-@*         try *@
-@*         { *@
-@*             // Hash the password before saving *@
-@*             user.Password = UserService.HashPassword(user.Password); *@
+    /* Error message styling */
+    .message {
+        color: #d9534f;
+        text-align: center;
+        margin-top: 15px;
+        font-size: 14px;
+    }
 
-@*             // Load existing users and check for duplicate email *@
-@*             var users = UserService.LoadUsers(); *@
-@*             if (users.Any(u => u.Email == user.Email)) *@
-@*             { *@
-@*                 errorMessage = "Email is already registered."; *@
-@*                 return; *@
-@*             } *@
+    /* Link for login */
+    .login-link {
+        text-align: center;
+        margin-top: 20px;
+    }
 
-@*             // Save the new user *@
-@*             users.Add(new User *@
-@*                 { *@
-@*                     Username = user.Username, *@
-@*                     Email = user.Email, *@
-@*                     PasswordHash = user.Password, *@
-@*                     CurrencyType = user.CurrencyType *@
-@*                 }); *@
-@*             UserService.SaveUsers(users); *@
+        .login-link a {
+            color: #4CAF50;
+            text-decoration: none;
+        }
 
-@*             successMessage = "Registration successful! Redirecting to login..."; *@
-@*             await Task.Delay(2000); *@
-@*             NavigationManager.NavigateTo("/login"); *@
-@*         } *@
-@*         catch (Exception ex) *@
-@*         { *@
-@*             errorMessage = "An error occurred during registration. Please try again."; *@
-@*         } *@
-@*     } *@
+            .login-link a:hover {
+                text-decoration: underline;
+            }
+</style>
 
-@*     public class UserRegistrationModel *@
-@*     { *@
-@*         [Required] *@
-@*         [StringLength(50, MinimumLength = 3, ErrorMessage = "Username must be between 3 and 50 characters.")] *@
-@*         public string Username { get; set; } = ""; *@
+@code {
+    private string RegisterUsername = "";
+    private string RegisterPassword = "";
+    private string RegisterEmail = "";
+    private string Message = "";
+    private bool IsRegistrationSuccessful = false;
 
-@*         [Required] *@
-@*         [EmailAddress(ErrorMessage = "Invalid email format.")] *@
-@*         public string Email { get; set; } = ""; *@
+    private async Task RegisterUser()
+    {
+        // Input validation
+        if (string.IsNullOrWhiteSpace(RegisterUsername) || string.IsNullOrWhiteSpace(RegisterPassword))
+        {
+            Message = "Username and password are required.";
+            return;
+        }
 
-@*         [Required] *@
-@*         [StringLength(100, MinimumLength = 6, ErrorMessage = "Password must be at least 6 characters long.")] *@
-@*         public string Password { get; set; } = ""; *@
+        // Load existing users
+        var users = UserService.LoadUsers();
 
-@*         [Required(ErrorMessage = "Currency type is required.")] *@
-@*         public string CurrencyType { get; set; } = ""; *@
-@*     } *@
-@* } *@
+        // Check if the username already exists
+        if (users.Any(u => u.Username == RegisterUsername))
+        {
+            // Inform the user that the username is already taken
+            Message = "Username already exists. Please login.";
+            await Task.Delay(2000);
+            NavigationManager.NavigateTo("/login");
+            return;
+        }
+
+        // Create new user and hash the password
+        var newUser = new User
+            {
+                Username = RegisterUsername,
+                Password = UserService.HashPassword(RegisterPassword),
+                Email = RegisterEmail
+            };
+
+        // Save the new user
+        users.Add(newUser);
+        UserService.SaveUsers(users);
+
+        // Set successful registration message
+        Message = "Registration successful! Redirecting to login...";
+        IsRegistrationSuccessful = true;
+        await Task.Delay(2000);
+        NavigationManager.NavigateTo("/login");
+    }
+}

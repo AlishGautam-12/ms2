@@ -1,15 +1,20 @@
 ﻿@inherits LayoutComponentBase
+@inject NavigationManager NavigationManager
 
 <div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
-
+    @if (!IsHomePage)
+    {
+        <div class="sidebar">
+            <NavMenu />
+        </div>
+    }
     <main>
-       
-
         <article class="content px-4">
             @Body
         </article>
     </main>
 </div>
+@code {
+    // Determine if the current page is the home page ("/")
+    private bool IsHomePage => NavigationManager.Uri.EndsWith("/") || NavigationManager.Uri.EndsWith("/login");
+}
